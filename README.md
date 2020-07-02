@@ -1,12 +1,20 @@
-# .NET Command Framework
+# .NET Command API Framework
+
+![CI](https://github.com/AMCN41R/csharp-command-framework/workflows/CI/badge.svg?branch=master)
+![Nuget](https://img.shields.io/nuget/v/commandapi)
+![GitHub](https://img.shields.io/github/license/amcn41r/csharp-command-framework)
 
 The command framework provides a simple, configurable command processing pipeline that can be added to any .NET project.
 
-It is ideal for CQRS based systems.
+It is ideal for CQRS based systems and is designed to be invoked via a single REST endpoint.
 
-## Commands
+The command pipeline is exposed as middleware, but it can easily added to specific endpoint routing using the extension methods within this library. Alternatively, you can just use the underlying framework to create your own pipeline. Check out the [wiki](https://github.com/AMCN41R/csharp-command-framework/wiki) for more information.
 
-Commands are requests to change the state of the system. They contain the information required to make the necessary changes. The must implement the `ICommand` interface and use the `CommandNameAttribute`.
+# Basic Usage
+To get started you just need to specify a command and its handler, register the dependencies, and add the command api endpoint.
+
+## A simple command
+Commands are requests to change the state of the system. They contain the information required to make the necessary changes. They are simple POCOs that *should* be immutable, and **must** implement the `ICommand` interface and use the `CommandNameAttribute`.
 
 > The command name should be unique within the scope of the running application.
 
@@ -26,7 +34,7 @@ public class AddUser : ICommand
 }
 ```
 
-### Command Handlers
+## Its handler
 Each command must have a handler. Simply implement the generic `ICommandHandler<>` interface.
 
 ```csharp
@@ -39,7 +47,85 @@ public class AddUserHandler : ICommandHandler<AddUser>
 }
 ```
 
-### Command Validation
+## Register the dependencies
+In order to use the middleware, you need to register the required services. This can be done in the `ConfigureServices` method of your `Startup.cs` file:
+
+```csharp
+public void ConfigureServices(IServiceCollection services)
+{
+    services.AddControllers();
+
+    // register the command pipeline dependencies
+    services.AddCommandBus(
+        new List<Assembly>
+        {
+            // assemblies that contain commands that should be registered
+            // ie: if all commands are in the api project...
+            typeof(Startup).Assembly
+        });
+}
+```
+
+## Add the route to your API
+To add the command pipeline to your api, simply use the `MapCommandEndpoint()` extension method in the `Configure` method of your `Startup.cs` file.
+
+This will add the `"/command"` route to your api. If you want to specify the route, you can use the overload as demonstrated in the example below.
+
+```csharp
+app.UseEndpoints(endpoints =>
+{
+    // add the command endpoint
+    // ----------------------------- //
+    
+    endpoints.MapCommandEndpoint();
+
+    // OR
+
+    endpoints.MapCommandEndpoint("custom/command-route");
+
+    // ----------------------------- //
+
+    endpoints.MapControllers();
+});
+```
+
+## Invoke the command
+To invoke the pipeline, send a POST request to the endpoint you configured above. The endpoint expects a JSON body with two properties...
+- **command** - The name specified on the `CommandName` attribute
+- **body** - The JSON representation of the command itself
+
+So, using the `AddUser` command above, the request body would be:
+```json
+{
+  "command": "Api/AddUser",
+  "body": {
+    "id": 1,
+    "name": "Jake"
+  }
+}
+```
+
+Using your method of choice, run your API and test it...
+
+> This example uses PowerShell and the `Invoke-WebRequest` cmdlet
+
+```powershell
+$body = @{
+  command = "Api/AddUser"
+  body = @{
+    id = 1
+    id = "Jake"
+  }
+} | ConvertTo-Json
+
+Invoke-WebRequest http://localhost:5000/command -Method 'POST' -Body $body
+```
+
+
+# Command Processing
+You must specify a command and a handler, but you can optionally provide a validator and authorization provider.
+
+## Command Validation
 A command can optionally have a validator. The command will be validated before it is handled.
 
 > The `CommandValidator<>` uses [Fluent Validation](https://fluentvalidation.net/).
@@ -60,7 +146,7 @@ public class AddUserValidator : CommandValidator<AddUser>
 }
 ```
 
-### Command Authorization
+## Command Authorization
 A command can also optionally have a authorization provider. By default, the command will be authorized before it is validated and handled.
 
 > \* The order of validation and authorization can be changed when registering the pipeline.
@@ -75,12 +161,7 @@ public class AddUserAuth : ICommandAuthProvider<AddUser>
 }
 ```
 
-## The Pipeline
-
-To register the pipeline in your application, you can use the Autofac container builder extension:
-
-> Currently, only Autofac is supported for automatic registration.
-
+# The Pipeline
 You can override some of the default processing options by providing the registration method the options setup action.
 
 ```csharp
@@ -104,43 +185,5 @@ The pipeline has 3 stages:
 
 By default, when a command is received by the command bus, it is authorized (if an auth provider exists), validated (if a validator exists) and then passed to its handler.
 
-### Processing Order
-By default, authorization is performed before validation. This can be switched by setting `AuthorizeBeforeValidate` to `false` in the options setup action.
-
-```csharp
-opts =>
-{
-    opts.AuthorizeBeforeValidate = false;
-}
-```
-
-### Authorization Failure
-By default, if authorization fails, a `System.UnauthorizedAccessException` is thrown. This can be overridden by providing a callback in the options setup action. The callback receives the command metadata as its only argument.
-
-> NOTE: If a callback is provided that does not throw an exception, the processing pipeline **WILL** continue to the next stage.
-
-```csharp
-opts =>
-{
-    opts.OnAuthorizationFailed = metadata =>
-    {
-        // custom auth failure logic
-    };
-}
-```
-
-### Handler Exceptions
-By default, if an exception is thrown by a command handler, the exception is unhandled and allowed to bubble up into your application, allowing you to handle the exception either globally, or inside each handler.
-
-If you want to provide common exception handling inside **ALL** command handlers, you can provide a callback in the options setup action. The callback is passed the exception that was thrown as its only argument.
-
-```csharp
-opts =>
-{
-    opts.OnHandlerException = ex =>
-    {
-        // custom exception handling
-    };
-}
-```
+Check out the [wiki](https://github.com/AMCN41R/csharp-command-framework/wiki) for more about the available options.
 

@@ -1,5 +1,10 @@
 namespace Example.AspCore
 {
+    using System.Collections.Generic;
+    using System.Reflection;
+
+    using CommandApi.DependencyInjection;
+
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.Extensions.Configuration;
@@ -15,20 +20,17 @@ namespace Example.AspCore
 
         public IConfiguration Configuration { get; }
 
-        // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
 
-            // TODO: Uncomment when nuget package available
-            //services.AddCommandBus(
-            //    new List<Assembly>
-            //    {
-            //        // add command assemblies here
-            //    });
+            services.AddCommandBus(
+                new List<Assembly>
+                {
+                    typeof(Startup).Assembly,
+                });
         }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())
@@ -44,9 +46,7 @@ namespace Example.AspCore
 
             app.UseEndpoints(endpoints =>
             {
-                // TODO: Uncomment when nuget package available
-                // endpoints.MapCommandEndpoint("/command");
-
+                endpoints.MapCommandEndpoint();
                 endpoints.MapControllers();
             });
         }
