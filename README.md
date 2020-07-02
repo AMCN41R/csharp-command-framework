@@ -10,6 +10,13 @@ It is ideal for CQRS based systems and is designed to be invoked via a single RE
 
 The command pipeline is exposed as middleware, but it can easily added to specific endpoint routing using the extension methods within this library. Alternatively, you can just use the underlying framework to create your own pipeline. Check out the [wiki](https://github.com/AMCN41R/csharp-command-framework/wiki) for more information.
 
+## Installing CommandApi
+You should install the [CommandApi framework with NuGet](https://www.nuget.org/packages/CommandApi/):
+
+```
+Install-Package CommandApi
+```
+
 # Basic Usage
 To get started you just need to specify a command and its handler, register the dependencies, and add the command api endpoint.
 
