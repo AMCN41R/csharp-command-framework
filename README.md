@@ -156,7 +156,7 @@ public class AddUserValidator : CommandValidator<AddUser>
 ## Command Authorization
 A command can also optionally have a authorization provider. By default, the command will be authorized before it is validated and handled.
 
-> \* The order of validation and authorization can be changed when registering the pipeline.
+> The order of validation and authorization can be changed when registering the pipeline.
 
 ```csharp
 public class AddUserAuth : ICommandAuthProvider<AddUser>
@@ -167,6 +167,7 @@ public class AddUserAuth : ICommandAuthProvider<AddUser>
     }
 }
 ```
+
 
 # The Pipeline
 You can override some of the default processing options by providing the registration method the options setup action.
@@ -194,3 +195,110 @@ By default, when a command is received by the command bus, it is authorized (if 
 
 Check out the [wiki](https://github.com/AMCN41R/csharp-command-framework/wiki) for more about the available options.
 
+
+# The Endpoint
+This library is designed to provide a generic command processing pipeline via a REST API.
+
+You can add this endpoint using the `MapCommandEndpoint()` extension as described above. This method branches the request pipeline and provides a terminal middleware, `CommandMiddleware`.
+
+This middleware provides a POST only endpoint that is designed to always return a response. It expects the `CommandRequest` object to be the body of the request and invokes the command pipeline.
+
+## Correlation
+For every command that is received, a correlation identifier is generated. This is a `GUID string`. This correlation id is passed along with the command in the command metadata and is also returned in the response.
+
+## Metadata
+The command metadata is generated for each command. It is passed into the command handler along with the command.
+
+It contains:
+- The correlation identifier
+- The command name
+- The DateTIme that the command was received
+
+## Headers
+A custom header can be included to specify that the command should be validated but not executed.
+
+**x-validate-only**
+> The validation header is optional. The allowed values are `true` and `false`. The default value is `false`. When included and set to `true`, the endpoint will only validate the command and not execute it. The http responses will be the same whether this header is provided or not.
+
+## Response
+Responses from the command API are generic and contain the correlation identifier, the name of the command and a boolean indicating whether or not the handler was executed (depending on the `x-validate-only` header).
+
+#### 200 OK
+```json
+{
+    "command": "NAMESPACE/COMMAND_NAME",
+    "correlationId": "d9ba8b68-85d4-4436-8b08-8626bdafa78f",
+    "executed": true
+}
+```
+| Property | Type | Description |
+|-|-|-|
+| **command** | string | The command that was processed. |
+| **correlationId** | string | A guid string that identifies the processed command. |
+| **executed** | boolean | `false` is the `x-validate-only` header was present and set to `true`, otherwise `true`. |
+
+---
+
+## Exceptions
+All exceptions are caught and handled differently depending on the type.
+
+#### CommandHandlerNotFoundException
+##### 400 Bad Request
+Can be returned if the command does not exist, or is invalid.
+```json
+{
+    "message": "Unknown command: '{COMMAND_NAME}'"
+}
+```
+
+---
+
+#### InvalidCommandException
+##### 400 Bad Request
+```json
+{
+    "message": "{COMMAND_NAME} command is invalid",
+    "errors": {
+        "StoreCode": [
+            "The specified condition was not met for 'Store Code'."
+        ]
+    }
+}
+```
+| Property | Type | Description |
+|-|-|-|
+| **message** | string | The error message. |
+| **errors** | object | In the case of a validation failure, an object whose keys are the properties that failed validation, each with a list of validation errors. |
+
+---
+
+#### JsonSerializationException
+##### 400 Bad Request
+```json
+{
+    "message": "{COMMAND_NAME} command is invalid",
+    "errors": [
+        "Could not process {ex.Path}. Please check value (and parent) is of correct type."
+    ]
+}
+```
+
+---
+
+#### UnauthorizedAccessException
+##### 401 Unauthorized
+```json
+{
+    "message": "Unauthorized."
+}
+```
+
+---
+
+### Any Other Exception
+##### 500 Internal Server Error
+```json
+{
+    "message": "An error occurred processing the request."
+}
+```
