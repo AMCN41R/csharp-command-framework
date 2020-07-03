@@ -127,7 +127,7 @@ $body = @{
   command = "Api/AddUser"
   body = @{
     id = 1
-    id = "Jake"
+    name = "Jake"
   }
 } | ConvertTo-Json
 
