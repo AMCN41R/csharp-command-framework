@@ -8,7 +8,9 @@ The command framework provides a simple, configurable command processing pipelin
 
 It is ideal for CQRS based systems and is designed to be invoked via a single REST endpoint.
 
-The command pipeline is exposed as middleware, but it can easily added to specific endpoint routing using the extension methods within this library. Alternatively, you can just use the underlying framework to create your own pipeline. Check out the [wiki](https://github.com/AMCN41R/csharp-command-framework/wiki) for more information.
+The command pipeline is exposed as middleware, but it can easily added to specific endpoint routing using the extension methods within this library. Alternatively, you can just use the underlying framework to create your own pipeline.
+
+Check out the [wiki](https://github.com/AMCN41R/csharp-command-framework/wiki) for more information.
 
 ## Installing CommandApi
 You should install the [CommandApi framework with NuGet](https://www.nuget.org/packages/CommandApi/):
@@ -18,10 +20,14 @@ Install-Package CommandApi
 ```
 
 # Basic Usage
-To get started you just need to specify a command and its handler, register the dependencies, and add the command api endpoint.
+To get started you just need to...
+- specify a command
+- add a handler for it
+- register the framework dependencies
+- and add the command api endpoint
 
 ## A simple command
-Commands are requests to change the state of the system. They contain the information required to make the necessary changes. They are simple POCOs that *should* be immutable, and **must** implement the `ICommand` interface and use the `CommandNameAttribute`.
+Commands are requests to change the state of the system. They are objects that contain the information required to make the necessary changes. They are simple POCOs that *should* be immutable, and **must** implement the `ICommand` interface and use the `CommandNameAttribute`.
 
 > The command name should be unique within the scope of the running application.
 
@@ -55,7 +61,7 @@ public class AddUserHandler : ICommandHandler<AddUser>
 ```
 
 ## Register the dependencies
-In order to use the middleware, you need to register the required services. This can be done in the `ConfigureServices` method of your `Startup.cs` file:
+In order to use the framework, you need to register the required services. This can be done in the `ConfigureServices` method of your `Startup.cs` file:
 
 ```csharp
 public void ConfigureServices(IServiceCollection services)
@@ -128,12 +134,26 @@ $body = @{
 Invoke-WebRequest http://localhost:5000/command -Method 'POST' -Body $body
 ```
 
+> Response
+```json
+StatusCode        : 200
+StatusDescription : OK
+
+{
+  "command":"Api/AddUser",
+  "correlationId": "8fde2bde-0867-49da-8d5e-eeab55933734",
+  "executed": true
+}
+```
+
 
 # Command Processing
 You must specify a command and a handler, but you can optionally provide a validator and authorization provider.
 
 ## Command Validation
 A command can optionally have a validator. The command will be validated before it is handled.
+
+If validation fails, a **400 Bad Request** is returned.
 
 > The `CommandValidator<>` uses [Fluent Validation](https://fluentvalidation.net/).
 
@@ -156,6 +176,8 @@ public class AddUserValidator : CommandValidator<AddUser>
 ## Command Authorization
 A command can also optionally have a authorization provider. By default, the command will be authorized before it is validated and handled.
 
+If this method returns `false`, an `UnauthorizedAccessException` is thrown and subsequently a **403 Forbidden** response is returned.
+
 > The order of validation and authorization can be changed when registering the pipeline.
 
 ```csharp
@@ -170,7 +192,7 @@ public class AddUserAuth : ICommandAuthProvider<AddUser>
 
 
 # The Pipeline
-You can override some of the default processing options by providing the registration method the options setup action.
+You can override some of the default processing options by providing the registration method an options setup action.
 
 ```csharp
 var builder = new ContainerBuilder();
@@ -212,7 +234,7 @@ The command metadata is generated for each command. It is passed into the comman
 It contains:
 - The correlation identifier
 - The command name
-- The DateTIme that the command was received
+- The DateTime that the command was received
 
 ## Headers
 A custom header can be included to specify that the command should be validated but not executed.
