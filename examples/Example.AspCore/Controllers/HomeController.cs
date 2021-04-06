@@ -11,7 +11,7 @@
         [HttpGet]
         public ActionResult<string> Index()
         {
-            return $"Hark Loss Api {DateTime.UtcNow:u}";
+            return $"Example Api {DateTime.UtcNow:u}";
         }
     }
 }
