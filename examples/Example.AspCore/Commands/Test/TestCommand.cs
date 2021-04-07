@@ -1,5 +1,7 @@
 ﻿namespace Example.AspCore.Commands.Test
 {
+    using System.ComponentModel.DataAnnotations;
+
     using CommandApi;
 
     /// <summary>
@@ -20,6 +22,9 @@
         /// <summary>
         /// Gets the test message.
         /// </summary>
+        [Required]
         public string Message { get; }
+
+        public int Id { get; set; }
     }
 }
