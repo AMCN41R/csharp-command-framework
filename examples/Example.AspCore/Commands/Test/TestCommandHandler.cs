@@ -11,7 +11,8 @@
         /// <inheritdoc />
         public Task HandleAsync(TestCommand command, CommandMetadata metadata)
         {
-            Console.WriteLine($"TEST COMMAND: {command.Message}");
+            var ctx = metadata.GetContext<CustomContext>();
+            Console.WriteLine($"TEST COMMAND: {command.Message} | User: '{ctx?.Username}'");
             return Task.CompletedTask;
         }
     }

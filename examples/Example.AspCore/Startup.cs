@@ -28,6 +28,14 @@ namespace Example.AspCore
                 new List<Assembly>
                 {
                     typeof(Startup).Assembly,
+                },
+                opts =>
+                {
+                    opts.SetCustomContext = (http, info) =>
+                    {
+                        var user = http.User?.Identity?.Name ?? "<none>";
+                        return new Commands.CustomContext(user);
+                    };
                 });
         }
 
