@@ -6,7 +6,8 @@
     using Microsoft.AspNetCore.Mvc.Testing;
     using Microsoft.Extensions.Hosting;
 
-    public class TestStartupFactory : WebApplicationFactory<TestStartup>
+    public class TestStartupFactory<T> : WebApplicationFactory<T>
+        where T : class
     {
         protected override IHost CreateHost(IHostBuilder builder)
         {
@@ -20,7 +21,7 @@
                 Host.CreateDefaultBuilder()
                     .ConfigureWebHostDefaults(builder =>
                     {
-                        builder.UseStartup<TestStartup>();
+                        builder.UseStartup<T>();
                     });
         }
     }

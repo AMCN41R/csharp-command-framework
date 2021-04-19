@@ -3,6 +3,8 @@
     using System;
     using System.Threading.Tasks;
 
+    using Microsoft.AspNetCore.Http;
+
     /// <summary>
     /// Options for the command processing pipeline.
     /// </summary>
@@ -27,5 +29,12 @@
         /// when authorization fails.
         /// </summary>
         public Func<CommandMetadata, Task>? OnAuthorizationFailed { get; set; }
+
+        /// <summary>
+        /// Gets or sets an optional delegate that is invoked with each web request
+        /// to generate a custom context that will be added to the <see cref="CommandMetadata"/>
+        /// object.
+        /// </summary>
+        public Func<HttpContext, CommandRequestInfo, dynamic>? SetCustomContext { get; set; }
     }
 }
