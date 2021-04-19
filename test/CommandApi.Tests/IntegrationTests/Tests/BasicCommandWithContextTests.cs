@@ -16,16 +16,16 @@
 
     using Xunit;
 
-    public class BasicCommandTests :
-        IClassFixture<TestStartupFactory<TestStartup>>,
+    public class BasicCommandWithContextTests :
+        IClassFixture<TestStartupFactory<TestStartupWithCommandContext>>,
         IDisposable
     {
-        public BasicCommandTests(TestStartupFactory<TestStartup> factory)
+        public BasicCommandWithContextTests(TestStartupFactory<TestStartupWithCommandContext> factory)
         {
             this.Factory = factory;
         }
 
-        private TestStartupFactory<TestStartup> Factory { get; }
+        private TestStartupFactory<TestStartupWithCommandContext> Factory { get; }
 
         public void Dispose()
         {
@@ -98,6 +98,11 @@
             Assert.True(trackedCommand.Authorized);
             Assert.True(trackedCommand.Validated);
             Assert.True(trackedCommand.Handled);
+
+            var context = trackedCommand.Metadata.GetContext<TestCustomContext>();
+            Assert.NotNull(context);
+            Assert.Null(context.UserIdHeader);
+            Assert.False(context.ValidateOnlyHeader);
         }
 
         [Fact]
@@ -121,6 +126,7 @@
                 Headers =
                 {
                     { "x-validate-only", "true" },
+                    { "x-user-id", "123" },
                 },
                 Content = body,
             };
@@ -148,6 +154,11 @@
             Assert.True(trackedCommand.Authorized);
             Assert.True(trackedCommand.Validated);
             Assert.False(trackedCommand.Handled);
+
+            var context = trackedCommand.Metadata.GetContext<TestCustomContext>();
+            Assert.NotNull(context);
+            Assert.Equal("123", context.UserIdHeader);
+            Assert.True(context.ValidateOnlyHeader);
         }
 
         [Fact]

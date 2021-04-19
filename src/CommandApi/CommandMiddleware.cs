@@ -23,7 +23,8 @@
         /// </summary>
         /// <param name="next">The pipeline request delegate.</param>
         /// <param name="commandBus">The command bus.</param>
-        public CommandMiddleware(RequestDelegate next, ICommandBus commandBus)
+        /// <param name="options">The command bus options.</param>
+        public CommandMiddleware(RequestDelegate next, ICommandBus commandBus, CommandBusOptions options)
         {
             // this pipeline is designed to always return a response, therefore
             // the next delegate will never be called
@@ -31,9 +32,14 @@
 
             this.CommandBus = commandBus
                 ?? throw new ArgumentNullException(nameof(commandBus));
+
+            this.Options = options
+                ?? throw new ArgumentNullException(nameof(options));
         }
 
         private ICommandBus CommandBus { get; }
+
+        private CommandBusOptions Options { get; }
 
         /// <summary>
         /// Invokes the middleware implementation.
@@ -66,16 +72,24 @@
 
             try
             {
+                var timestamp = DateTime.UtcNow;
+
                 var correlationId = Guid.NewGuid().ToString();
 
                 var validateOnly =
                     context.Request.Headers.ContainsKey(CommandHeaders.ValidateOnly)
                     && context.Request.Headers[CommandHeaders.ValidateOnly].ToString().TryParseBool();
 
+                var customContext =
+                    this.Options.SetCustomContext?.Invoke(
+                        context,
+                        new CommandRequestInfo(request.Command, timestamp, correlationId, validateOnly));
+
                 var metadata = new CommandMetadata(
                     request.Command,
-                    DateTime.UtcNow,
-                    correlationId);
+                    timestamp,
+                    correlationId,
+                    customContext);
 
                 await this.CommandBus.SendAsync(
                     request.Body,
